@@ -10,3 +10,8 @@ build/*
 
 # tern: каталог сборки PlatformIO
 .pio/
+
+# tern: файлы VS Code, которые PlatformIO создаёт сам (с локальными путями)
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/extensions.json
