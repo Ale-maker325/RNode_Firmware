@@ -1,0 +1,40 @@
+# Плата tern-nRF52840 ProMicro для arduino-cli.
+# Ядро, компилятор и platform.txt берутся из установленного пакета adafruit:nrf52 (ссылка build.core),
+# здесь — только наша распиновка (variants/tern_promicro) и параметры загрузчика ProMicro.
+
+tern_promicro.name=tern-nRF52840 ProMicro (Ebyte E22)
+
+tern_promicro.vid.0=0x239A
+tern_promicro.pid.0=0x00B3
+tern_promicro.vid.1=0x239A
+tern_promicro.pid.1=0x80DA
+
+tern_promicro.upload.tool=nrfutil
+tern_promicro.upload.protocol=nrfutil
+tern_promicro.upload.use_1200bps_touch=true
+tern_promicro.upload.wait_for_upload_port=true
+tern_promicro.upload.maximum_size=815104
+tern_promicro.upload.maximum_data_size=237568
+
+tern_promicro.build.mcu=cortex-m4
+tern_promicro.build.f_cpu=64000000
+tern_promicro.build.board=NRF52840_TERN_PROMICRO
+tern_promicro.build.core=adafruit:nRF5
+# Пути platform.txt ядра ({runtime.platform.path}: TinyUSB, adafruit-nrfutil) указывают на пакет Adafruit,
+# а не на эту папку. Нужен arduino-cli >= 1.0.4.
+tern_promicro.runtime.use_core_platform_path_for_runtime_platform_path=true
+tern_promicro.build.variant=tern_promicro
+tern_promicro.build.usb_manufacturer="Tern"
+tern_promicro.build.usb_product="tern-nRF52840 ProMicro"
+# CONFIG_NFCT_PINS_AS_GPIOS: P0.09/P0.10 (RESET и DIO1 радио) — обычные выводы, а не NFC.
+# Флаг попадает и в C-файлы ядра (system_nrf52840.c), где он и обрабатывается.
+tern_promicro.build.extra_flags=-DNRF52840_XXAA -DCONFIG_NFCT_PINS_AS_GPIOS {build.flags.usb}
+tern_promicro.build.ldscript=nrf52840_s140_v6.ld
+tern_promicro.build.vid=0x239A
+tern_promicro.build.pid=0x00B3
+tern_promicro.build.uf2_family=0xADA52840
+
+# Загрузчик ProMicro (как nice!nano): SoftDevice S140 6.1.1
+tern_promicro.build.sd_name=s140
+tern_promicro.build.sd_version=6.1.1
+tern_promicro.build.sd_fwid=0x00B6

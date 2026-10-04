@@ -459,6 +459,13 @@ int sx126x::beginPacket(int implicitHeader) {
 
 int sx126x::endPacket() {
   setPacketParams(_preambleLength, _implicitHeaderMode, _payloadLength, _crcMode);
+
+  #if BOARD_MODEL == BOARD_TERN_PROMICRO
+    // tern: у E22 TXEN поднимает DIO2, а RXEN на время передачи должен быть LOW,
+    // иначе антенный ключ модуля открыт сразу в обе стороны. Обратно в HIGH — в receive().
+    if (_rxen != -1) { digitalWrite(_rxen, LOW); }
+  #endif
+
   uint8_t timeout[3] = {0}; // Put in single TX mode
   executeOpcode(OP_TX_6X, timeout, 3);
 
@@ -702,6 +709,8 @@ void sx126x::enableTCXO() {
     #elif BOARD_MODEL == BOARD_TECHO
       uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
     #elif BOARD_MODEL == BOARD_HELTEC32_V4
+      uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
+    #elif BOARD_MODEL == BOARD_TERN_PROMICRO // tern: TCXO модуля E22 — 1,8 В от DIO3
       uint8_t buf[4] = {MODE_TCXO_1_8V_6X, 0x00, 0x00, 0xFF};
     #endif
     executeOpcode(OP_DIO3_TCXO_CTRL_6X, buf, 4);

@@ -71,6 +71,10 @@
   #define DISP_ADDR 0x3C
   #define SCL_OLED 14
   #define SDA_OLED 13
+#elif BOARD_MODEL == BOARD_TERN_PROMICRO
+  // tern: OLED 0,96" SSD1306 на I2C P1.04/P0.11 (выводы Wire заданы в variant.h), питание — P0.13
+  #define DISP_RST -1
+  #define DISP_ADDR 0x3C
 #elif BOARD_MODEL == BOARD_RNODE_NG_21
   #define DISP_RST -1
   #define DISP_ADDR 0x3C
@@ -323,6 +327,11 @@ bool display_init() {
       Wire.begin(SDA_OLED, SCL_OLED);
     #elif BOARD_MODEL == BOARD_XIAO_S3
       Wire.begin(SDA_OLED, SCL_OLED);
+    #elif BOARD_MODEL == BOARD_TERN_PROMICRO
+      // tern: питание OLED включено ещё в initVariant(); даём дисплею время проснуться
+      pinMode(PIN_3V3_EN, OUTPUT);
+      digitalWrite(PIN_3V3_EN, HIGH);
+      delay(50);
     #endif
 
     #if HAS_EEPROM
@@ -426,6 +435,9 @@ bool display_init() {
           disp_mode = DISP_MODE_PORTRAIT;
           display.setRotation(1);
         #elif BOARD_MODEL == BOARD_RAK4631
+          disp_mode = DISP_MODE_LANDSCAPE;
+          display.setRotation(0);
+        #elif BOARD_MODEL == BOARD_TERN_PROMICRO // tern: дисплей лежит горизонтально; поворот меняется rnodeconf
           disp_mode = DISP_MODE_LANDSCAPE;
           display.setRotation(0);
         #elif BOARD_MODEL == BOARD_TDECK

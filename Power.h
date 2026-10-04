@@ -180,6 +180,32 @@ float pmu_temperature = PMU_TEMP_MIN-1;
   bool bat_voltage_dropping = false;
   float bat_delay_v = 0;
   float bat_state_change_v = 0;
+#elif BOARD_MODEL == BOARD_TERN_PROMICRO
+  // tern: батарея 2S (по умолчанию) или 3S через делитель на P0.31.
+  // Пороги автора для одной банки, умноженные на число банок. Для 3S собрать с -DTERN_BATTERY_3S.
+  // АЦП nRF52 по умолчанию: 10 бит, опорное 3,6 В → 3,6/1023 В на отсчёт, умноженное на коэффициент делителя.
+  #if defined(TERN_BATTERY_3S)
+    #define TERN_BAT_CELLS    3
+    #define TERN_BAT_V_PER_LSB 0.016553   // делитель 1 МОм / 270 кОм: (1000+270)/270 = 4,70370
+  #else
+    #define TERN_BAT_CELLS    2
+    #define TERN_BAT_V_PER_LSB 0.011037   // делитель 470 кОм / 220 кОм: (470+220)/220 = 3,13636
+  #endif
+  #define BAT_V_MIN       (3.15*TERN_BAT_CELLS)
+  #define BAT_V_MAX       (4.15*TERN_BAT_CELLS)
+  #define BAT_V_CHG       (4.48*TERN_BAT_CELLS)
+  #define BAT_V_FLOAT     (4.33*TERN_BAT_CELLS)
+  #define BAT_SAMPLES     7
+  const uint8_t pin_vbat = PIN_VBAT; // P0.31 (AIN7)
+  float bat_p_samples[BAT_SAMPLES];
+  float bat_v_samples[BAT_SAMPLES];
+  uint8_t bat_samples_count = 0;
+  int bat_discharging_samples = 0;
+  int bat_charging_samples = 0;
+  int bat_charged_samples = 0;
+  bool bat_voltage_dropping = false;
+  float bat_delay_v = 0;
+  float bat_state_change_v = 0;
 #endif
 
 uint32_t last_pmu_update = 0;
@@ -202,7 +228,7 @@ void measure_temperature() {
 }
 
 void measure_battery() {
-  #if BOARD_MODEL == BOARD_RNODE_NG_21 || BOARD_MODEL == BOARD_LORA32_V2_1 || BOARD_MODEL == BOARD_HELTEC32_V3 || BOARD_MODEL == BOARD_HELTEC32_V4 || BOARD_MODEL == BOARD_TDECK || BOARD_MODEL == BOARD_T3S3 || BOARD_MODEL == BOARD_HELTEC_T114 || BOARD_MODEL == BOARD_TECHO
+  #if BOARD_MODEL == BOARD_RNODE_NG_21 || BOARD_MODEL == BOARD_LORA32_V2_1 || BOARD_MODEL == BOARD_HELTEC32_V3 || BOARD_MODEL == BOARD_HELTEC32_V4 || BOARD_MODEL == BOARD_TDECK || BOARD_MODEL == BOARD_T3S3 || BOARD_MODEL == BOARD_HELTEC_T114 || BOARD_MODEL == BOARD_TECHO || BOARD_MODEL == BOARD_TERN_PROMICRO // tern
     battery_installed = true;
     #if BOARD_MODEL == BOARD_HELTEC32_V3 || BOARD_MODEL == BOARD_HELTEC32_V4
       battery_indeterminate = false;
@@ -220,6 +246,8 @@ void measure_battery() {
       float battery_measurement = (float)(analogRead(pin_vbat)) * 0.017165;
     #elif BOARD_MODEL == BOARD_TECHO
       float battery_measurement = (float)(analogRead(pin_vbat)) * 0.007067;
+    #elif BOARD_MODEL == BOARD_TERN_PROMICRO // tern: напряжение всей батареи (2S/3S)
+      float battery_measurement = (float)(analogRead(pin_vbat)) * TERN_BAT_V_PER_LSB;
     #else
       float battery_measurement = (float)(analogRead(pin_vbat)) / 4095.0*7.26;
     #endif
@@ -411,7 +439,7 @@ bool init_pmu() {
     pmu_temp_sensor_ready = true;
   #endif
 
-  #if BOARD_MODEL == BOARD_RNODE_NG_21 || BOARD_MODEL == BOARD_LORA32_V2_1 || BOARD_MODEL == BOARD_TDECK || BOARD_MODEL == BOARD_T3S3 || BOARD_MODEL == BOARD_TECHO
+  #if BOARD_MODEL == BOARD_RNODE_NG_21 || BOARD_MODEL == BOARD_LORA32_V2_1 || BOARD_MODEL == BOARD_TDECK || BOARD_MODEL == BOARD_T3S3 || BOARD_MODEL == BOARD_TECHO || BOARD_MODEL == BOARD_TERN_PROMICRO // tern
     pinMode(pin_vbat, INPUT);
     return true;
   #elif BOARD_MODEL == BOARD_HELTEC32_V3

@@ -1,0 +1,3 @@
+# Локальные артефакты сборки tern
+build/
+arduino/libraries/

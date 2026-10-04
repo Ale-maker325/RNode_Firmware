@@ -122,6 +122,10 @@
   #define MODEL_FE            0xFE // Homebrew board, max 17dBm output power
   #define MODEL_FF            0xFF // Homebrew board, max 14dBm output power
 
+  // tern: плата tern-nRF52840 ProMicro (Ebyte E22). Собственного продукта/модели нет —
+  // в EEPROM пишется штатный Homebrew (PRODUCT_HMBRW + MODEL_FE), чтобы работал обычный rnodeconf.
+  #define BOARD_TERN_PROMICRO 0x5A
+
   #if defined(__AVR_ATmega1284P__)
     #define PLATFORM PLATFORM_AVR
     #define MCU_VARIANT MCU_1284P
@@ -143,6 +147,8 @@
     #if BOARD_MODEL == BOARD_RAK4631
       #define MODEM SX1262
     #elif BOARD_MODEL == BOARD_GENERIC_NRF52
+      #define MODEM SX1262
+    #elif BOARD_MODEL == BOARD_TERN_PROMICRO // tern: E22-400M30S (SX1268) / E22-900M30S (SX1262), один драйвер sx126x
       #define MODEM SX1262
     #else
       #define MODEM SX1276
@@ -894,6 +900,72 @@
       const int DISPLAY_CLK = PIN_T114_TFT_SCK;
       const int DISPLAY_BL_PIN = PIN_T114_TFT_BLGT;
       const int DISPLAY_RST = PIN_T114_TFT_RST;
+
+    #elif BOARD_MODEL == BOARD_TERN_PROMICRO
+      // tern: nRF52840 ProMicro + Ebyte E22-xxxM30S + OLED SSD1306 128x64 (I2C 0x3C).
+      // Выводы SPI/I2C/Serial заданы в варианте платы tern/arduino/.../variants/tern_promicro/variant.h
+      #define HAS_EEPROM false
+      #define HAS_DISPLAY true
+      #define HAS_BLUETOOTH false
+      #define HAS_BLE true
+      #define HAS_CONSOLE false
+      #define HAS_PMU true                  // батарея через делитель на P0.31 (Power.h)
+      #define HAS_NP false
+      #define HAS_SD false
+      #define HAS_TCXO true                 // TCXO модуля E22 питается от DIO3 (1,8 В, sx126x.cpp)
+      #define HAS_RF_SWITCH_RX_TX true
+      #define HAS_BUSY true
+      #define HAS_INPUT true
+      #define DIO2_AS_RF_SWITCH true        // TXEN модуля E22 соединён с DIO2
+      #define CONFIG_UART_BUFFER_SIZE 6144
+      #define CONFIG_QUEUE_SIZE 6144
+      #define CONFIG_QUEUE_MAX_LENGTH 200
+      #define EEPROM_SIZE 296
+      #define EEPROM_OFFSET EEPROM_SIZE-EEPROM_RESERVED
+      #define BLE_MANUFACTURER "Tern"
+      #define BLE_MODEL "tern-nRF52840 ProMicro"
+
+      // Усилитель модуля E22: мощность в настройках Reticulum задаётся НА АНТЕННЕ, прошивка сама
+      // пересчитывает её в мощность чипа SX126x. Тип модуля выбирается при сборке (tern/build.ps1 -Module):
+      //   TERN_E22_M30S — 1 Вт: усиление 8 дБ, 22 дБм на чипе → 30 дБм на антенне;
+      //   TERN_E22_M33S — 2 Вт: усиление 25 дБ, 8 дБм на чипе → 33 дБм на антенне (как в Meshtastic:
+      //                   больше 8 дБм на вход этого усилителя подавать не нужно — он уже в насыщении).
+      #define HAS_LORA_PA true
+      #define LORA_PA_MODEL LORA_PA_UNKNOWN
+      #define PA_GAIN_POINTS 22
+      #if defined(TERN_E22_M33S)
+        #define PA_MAX_OUTPUT  33
+        #define PA_GAIN_VALUES 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25
+      #elif defined(TERN_E22_M30S)
+        #define PA_MAX_OUTPUT  30
+        #define PA_GAIN_VALUES 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
+      #else
+        #error "tern: не выбран модуль E22 — соберите с -DTERN_E22_M30S (1 Вт) или -DTERN_E22_M33S (2 Вт)"
+      #endif
+      // Усилителем E22 управляет сам модуль (TXEN/RXEN), отдельных выводов нет. Заглушки нужны только
+      // для компиляции общего кода HAS_LORA_PA в sx126x.cpp — при LORA_PA_UNKNOWN он не выполняется.
+      #define LORA_PA_PWR_EN -1
+      #define LORA_PA_CSD    -1
+      #define LORA_PA_CPS    -1
+      #define LORA_PA_CTX    -1
+
+      const int pin_btn_usr1 = PIN_BUTTON1;  // P1.00
+
+      // Радиомодуль E22 (SX126x)
+      const int pin_cs = SS;                 // P1.13
+      const int pin_sclk = PIN_SPI_SCK;      // P1.11
+      const int pin_mosi = PIN_SPI_MOSI;     // P1.15
+      const int pin_miso = PIN_SPI_MISO;     // P0.02
+      const int pin_reset = 9;               // P0.09 (вывод NFC, переключён в GPIO флагом в boards.txt)
+      const int pin_dio = 10;                // P0.10 — DIO1 (вывод NFC, как и P0.09)
+      const int pin_busy = 29;               // P0.29
+      const int pin_rxen = 17;               // P0.17 — RXEN модуля, на время передачи = LOW (sx126x.cpp)
+      const int pin_txen = -1;               // TXEN управляется DIO2
+      const int pin_tcxo_enable = -1;
+
+      // Один красный светодиод P0.15 на приём и передачу
+      const int pin_led_rx = PIN_LED1;
+      const int pin_led_tx = PIN_LED1;
 
     #else
       #error An unsupported nRF board was selected. Cannot compile RNode firmware.
